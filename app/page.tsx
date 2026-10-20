@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useEffect, useRef, useState } from "react";
 import styles from "./page.module.css";
 import Markdown from "./Markdown";
@@ -42,17 +43,13 @@ export default function Chat() {
   const [mode, setMode] = useState<Mode>("friendly");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [fullscreen, setFullscreen] = useState(false);
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    status,
-    setMessages,
-  } = useChat({
-    api: "/api/chat",
-    body: { mode },
+  const { messages, sendMessage, status, setMessages } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: () => ({ mode }),
+    }),
   });
+  const [input, setInput] = useState("");
 
   const [toolCall, setToolCall] = useState<{ name: string } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -225,8 +222,17 @@ curl ${origin}/a2a -H "Content-Type: application/json" -d '{
   const clearChat = () => {
     if (confirm("Clear conversation?")) {
       setMessages([]);
+      setInput("");
       localStorage.removeItem(storageKey);
     }
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || busy) return;
+    setInput("");
+    sendMessage({ text });
   };
 
   const buyCoffee = () => {
@@ -360,7 +366,10 @@ curl ${origin}/a2a -H "Content-Type: application/json" -d '{
         {messages.map((m) => {
           const isUser = m.role === "user";
           const lastId = messages[messages.length - 1]?.id;
-          const text = "content" in m && m.content ? m.content : null;
+          const text =
+            "content" in m && typeof m.content === "string" && m.content
+              ? m.content
+              : null;
           const parts =
             "parts" in m && Array.isArray(m.parts) ? (m.parts as any[]) : [];
 
@@ -411,10 +420,10 @@ curl ${origin}/a2a -H "Content-Type: application/json" -d '{
       </main>
 
       <footer className={styles.form}>
-        <form onSubmit={handleSubmit} className={styles.inputRow}>
+        <form onSubmit={onSubmit} className={styles.inputRow}>
           <input
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             onFocus={() => setFullscreen(true)}
             placeholder={MODES[mode].placeholder}
             className={styles.input}

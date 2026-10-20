@@ -9,10 +9,8 @@ vi.mock("@ai-sdk/react", () => ({
 }));
 
 const baseChatState = {
-  input: "",
-  handleInputChange: vi.fn(),
-  handleSubmit: vi.fn(),
   setMessages: vi.fn(),
+  sendMessage: vi.fn(),
 };
 
 function assistantMessage(text: string) {

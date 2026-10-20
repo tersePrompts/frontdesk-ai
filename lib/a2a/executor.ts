@@ -63,7 +63,7 @@ async function handleChat(text: string): Promise<string> {
   const { text: reply } = await generateText({
     model,
     prompt: text,
-    maxTokens: 1024,
+    maxOutputTokens: 1024,
   });
   return reply;
 }

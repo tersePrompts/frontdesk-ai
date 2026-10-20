@@ -1,4 +1,4 @@
-import { streamText, tool } from "ai";
+import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
 import { getModel } from "@/lib/ai";
 import { getSystemPrompt } from "@/lib/persona";
@@ -43,13 +43,13 @@ export async function POST(req: Request) {
     model,
     system: getSystemPrompt(mode),
     messages: cleanMessages,
-    maxTokens: 4096,
-    maxSteps: 20,
+    maxOutputTokens: 4096,
+    stopWhen: stepCountIs(20),
     tools: {
       calendar: tool({
         description:
           "Schedule and manage the owner's meetings via Calendly: list event types and scheduling links, check availability, read scheduled meetings, book a meeting on behalf of an invitee, or cancel a meeting.",
-        parameters: z.object({
+        inputSchema: z.object({
           action: z.enum([
             "get_me",
             "list_event_types",
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       send_email: tool({
         description:
           "Send an internal email to the owner's inbox on their behalf. Use when leaving a message. The recipient is fixed to the owner's internal inbox (never expose the address to the user).",
-        parameters: z.object({
+        inputSchema: z.object({
           subject: z.string(),
           body: z.string().describe("Plain-text email body"),
         }),
@@ -100,5 +100,10 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toDataStreamResponse();
+  return result.toUIMessageStreamResponse({
+    onError: (err) => {
+      console.error("[chat] stream error:", err);
+      return "An error occurred.";
+    },
+  });
 }
